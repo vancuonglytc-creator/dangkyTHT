@@ -109,7 +109,7 @@
     }
     .error { color: #d32f2f; }
 
-    /* Khu vực xem trước ảnh chân dung */
+    /* Xem trước ảnh */
     .preview-box {
       margin-top: 8px;
       display: flex;
@@ -125,7 +125,7 @@
       display: none;
     }
 
-    /* Giao diện Phiếu Đăng Ký / Thẻ Check-in */
+    /* Thẻ Check-in */
     #ticketContainer {
       display: none;
       margin-top: 20px;
@@ -157,7 +157,6 @@
       margin: 10px 0;
       border: 1px solid #c2d7fa;
     }
-    /* Khung chứa song song: Ảnh chân dung + Mã QR */
     .ticket-visual-grid {
       display: flex;
       justify-content: center;
@@ -166,8 +165,8 @@
       margin: 15px 0 10px;
     }
     .portrait-box {
-      width: 110px;
-      height: 140px;
+      width: 120px;
+      height: 150px;
       border: 3px solid #fff;
       border-radius: 8px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.12);
@@ -268,7 +267,7 @@
 
         <!-- MỤC TẢI ẢNH CHÂN DUNG -->
         <div class="form-group">
-          <label for="portraitInput">Ảnh chân dung / thẻ 3x4 (Dưới 3MB) *</label>
+          <label for="portraitInput">Ảnh chân dung / thẻ 3x4 *</label>
           <input type="file" id="portraitInput" accept="image/*" required>
           <div class="preview-box">
             <img id="imgPreview" class="preview-img" alt="Xem trước">
@@ -289,7 +288,6 @@
         
         <div class="reg-code-badge" id="displayCode">THT-0001</div>
         
-        <!-- Khung hiển thị song song ảnh thẻ và QR code -->
         <div class="ticket-visual-grid">
           <div class="portrait-box">
             <img id="ticketPortrait" src="" alt="Chân dung">
@@ -312,7 +310,7 @@
   </div>
 
   <script>
-    // Dán URL Web App mới của bạn vào đây:
+    // Dán URL Web App Google Apps Script của bạn vào đây:
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyLPhZ-A9cwBlXVWHAfKZCf0GfEIXFKeZOtZXPUDPXaX6_KtpPv5xGnIVrS2An_DWODMQ/exec';
 
     const form = document.getElementById('registrationForm');
@@ -326,46 +324,62 @@
     const previewText = document.getElementById('previewText');
 
     let base64Photo = "";
-    let photoType = "";
     let currentRegisteredData = null;
 
-    // Xem trước ảnh khi thí sinh chọn file
+    // Tự động nén ảnh xuống tối đa 800px (~100KB) để gửi siêu nhanh, tránh timeout
     portraitInput.addEventListener('change', function(e) {
       const file = e.target.files[0];
-      if (file) {
-        if (file.size > 3 * 1024 * 1024) {
-          alert("Kích thước ảnh quá lớn! Vui lòng chọn ảnh dưới 3MB.");
-          portraitInput.value = "";
-          imgPreview.style.display = "none";
-          previewText.innerText = "Chưa chọn ảnh";
-          base64Photo = "";
-          return;
-        }
+      if (!file) return;
 
-        photoType = file.type;
-        const reader = new FileReader();
-        reader.onload = function(evt) {
-          base64Photo = evt.target.result;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const tempImg = new Image();
+        tempImg.onload = function() {
+          const maxDim = 800;
+          let w = tempImg.width;
+          let h = tempImg.height;
+
+          if (w > maxDim || h > maxDim) {
+            if (w > h) {
+              h = Math.round((h * maxDim) / w);
+              w = maxDim;
+            } else {
+              w = Math.round((w * maxDim) / h);
+              h = maxDim;
+            }
+          }
+
+          const c = document.createElement('canvas');
+          c.width = w;
+          c.height = h;
+          const ctx = c.getContext('2d');
+          ctx.drawImage(tempImg, 0, 0, w, h);
+
+          // Nén dạng JPEG 0.82
+          base64Photo = c.toDataURL('image/jpeg', 0.82);
+
           imgPreview.src = base64Photo;
           imgPreview.style.display = "block";
           previewText.innerText = file.name;
         };
-        reader.readAsDataURL(file);
-      }
+        tempImg.src = evt.target.result;
+      };
+      reader.readAsDataURL(file);
     });
 
     form.addEventListener('submit', function (e) {
       e.preventDefault();
 
       if (!base64Photo) {
-        alert("Vui lòng tải ảnh chân dung của bạn!");
+        alert("Vui lòng chọn ảnh chân dung của thí sinh!");
         return;
       }
 
       submitBtn.disabled = true;
-      submitBtn.innerText = 'Đang tải dữ liệu và lưu ảnh...';
+      submitBtn.innerText = 'Đang gửi đăng ký và lưu ảnh...';
       statusMessage.style.display = 'none';
 
+      // Sinh mã ngẫu nhiên duy nhất
       const registrationCode = 'THT-' + Math.floor(1000 + Math.random() * 9000);
 
       const formData = {
@@ -375,9 +389,7 @@
         phone: form.phone.value.trim(),
         email: form.email.value.trim(),
         competition_bracket: form.competition_bracket.value,
-        photoBase64: base64Photo,
-        photoName: portraitInput.files[0] ? portraitInput.files[0].name : "portrait.jpg",
-        photoType: photoType
+        photoBase64: base64Photo
       };
 
       fetch(SCRIPT_URL, {
@@ -425,15 +437,15 @@
       // Đưa ảnh chân dung lên thẻ
       document.getElementById('ticketPortrait').src = info.photoBase64;
 
-      // Tạo QR code
+      // Tạo mã QR
       const qrContainer = document.getElementById('qrcode');
       qrContainer.innerHTML = '';
       
       try {
         new QRCode(qrContainer, {
           text: String(info.code),
-          width: 130,
-          height: 130,
+          width: 140,
+          height: 140,
           colorDark: "#000000",
           colorLight: "#ffffff",
           correctLevel: QRCode.CorrectLevel.H
@@ -443,7 +455,7 @@
       }
     }
 
-    // Vẽ thẻ kết hợp ảnh chân dung + QR Code vào file ảnh PNG để tải về
+    // Vẽ thẻ kết hợp ảnh chân dung + QR Code vào ảnh PNG
     document.getElementById('downloadBtn').addEventListener('click', function() {
       if (!currentRegisteredData) return;
 
@@ -452,7 +464,7 @@
       canvas.width = 600;
       canvas.height = 800;
 
-      // Nền và viền
+      // Nền trắng và viền xanh
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.lineWidth = 4;
@@ -469,7 +481,7 @@
       ctx.font = "18px sans-serif";
       ctx.fillText("Hội thi Tin học trẻ", canvas.width / 2, 95);
 
-      // Mã đăng ký
+      // Khung mã đăng ký
       ctx.fillStyle = "#e8f0fe";
       ctx.fillRect(170, 115, 260, 48);
       ctx.fillStyle = "#1a73e8";
@@ -509,10 +521,10 @@
       const userImg = new Image();
       userImg.onload = function() {
         // Vẽ ảnh chân dung (bên trái)
-        ctx.drawImage(userImg, 100, 190, 170, 220);
+        ctx.drawImage(userImg, 90, 190, 180, 225);
         ctx.strokeStyle = "#dddddd";
         ctx.lineWidth = 2;
-        ctx.strokeRect(100, 190, 170, 220);
+        ctx.strokeRect(90, 190, 180, 225);
 
         // Vẽ QR Code (bên phải)
         const qrCanvas = document.querySelector('#qrcode canvas');
