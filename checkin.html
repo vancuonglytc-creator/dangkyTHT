@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Hệ thống Điểm danh Thí sinh</title>
-  <!-- Thư viện quét mã QR qua Camera -->
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
     * {
@@ -49,6 +48,8 @@
       border-radius: 8px;
       overflow: hidden;
       border: 1px solid #ddd;
+      background: #000;
+      min-height: 280px;
     }
     .manual-box {
       margin-top: 15px;
@@ -72,8 +73,26 @@
       font-weight: 600;
       cursor: pointer;
     }
+    .sync-status {
+      margin-top: 10px;
+      font-size: 13px;
+      color: #2e7d32;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .btn-reload {
+      background: none;
+      border: 1px solid #c2d7fa;
+      color: #1a73e8;
+      padding: 4px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .btn-reload:hover { background: #f0f7ff; }
 
-    /* Màn hình hiển thị kết quả thí sinh */
+    /* Màn hình kết quả */
     .result-card {
       display: none;
       flex-direction: column;
@@ -144,9 +163,7 @@
       padding: 12px;
       border: 1px solid #e1e9f5;
     }
-    .info-table tr td {
-      padding: 5px 8px;
-    }
+    .info-table tr td { padding: 5px 8px; }
     .info-table tr td:first-child {
       font-weight: 600;
       color: #555;
@@ -161,18 +178,12 @@
       color: #888;
       font-size: 15px;
     }
-    .loading-spinner {
-      display: none;
-      margin-top: 15px;
-      font-weight: 600;
-      color: #1a73e8;
-    }
   </style>
 </head>
 <body>
 
   <div class="main-wrap">
-    <!-- CỘT TRÁI: CAMERA QUÉT MÃ QR -->
+    <!-- CỘT TRÁI: CAMERA -->
     <div class="panel">
       <h2>Camera Điểm Danh</h2>
       <div id="reader"></div>
@@ -181,10 +192,14 @@
         <input type="text" id="manualInput" placeholder="Nhập mã (VD: THT-0001)">
         <button id="manualBtn">Tìm</button>
       </div>
-      <div id="loading" class="loading-spinner">Đang xác thực dữ liệu...</div>
+
+      <div class="sync-status">
+        <span id="syncText">Đang đồng bộ dữ liệu...</span>
+        <button class="btn-reload" onclick="loadAllCandidates()">Cập nhật danh sách</button>
+      </div>
     </div>
 
-    <!-- CỘT PHẢI: KẾT QUẢ THÍ SINH VÀ ẢNH CHÂN DUNG -->
+    <!-- CỘT PHẢI: KẾT QUẢ HIỂN THỊ TỨC THÌ -->
     <div class="panel">
       <h2>Thông tin thí sinh</h2>
 
@@ -193,7 +208,7 @@
           <circle cx="12" cy="8" r="4"></circle>
           <path d="M4 20c0-4 4-6 8-6s8 2 8 6"></path>
         </svg>
-        <p>Hướng camera vào mã QR hoặc gõ mã để check-in</p>
+        <p>Hướng camera vào mã QR để check-in tức thì</p>
       </div>
 
       <div id="resultCard" class="result-card">
@@ -203,25 +218,25 @@
           <img id="candPhoto" src="" alt="Ảnh chân dung">
         </div>
 
-        <div id="candName" class="candidate-name">Nguyễn Văn A</div>
-        <div id="candCode" class="candidate-code">THT-0001</div>
+        <div id="candName" class="candidate-name">---</div>
+        <div id="candCode" class="candidate-code">---</div>
 
         <table class="info-table">
           <tr>
             <td>Giới tính:</td>
-            <td id="candGender">Nam</td>
+            <td id="candGender">---</td>
           </tr>
           <tr>
             <td>Số điện thoại:</td>
-            <td id="candPhone">0901234567</td>
+            <td id="candPhone">---</td>
           </tr>
           <tr>
             <td>Bảng thi:</td>
-            <td id="candBracket">Bảng A (Tiểu học)</td>
+            <td id="candBracket">---</td>
           </tr>
           <tr>
             <td>Thời gian vào:</td>
-            <td id="candCheckinTime">24/09/2026 21:00</td>
+            <td id="candCheckinTime">---</td>
           </tr>
         </table>
       </div>
@@ -229,106 +244,125 @@
   </div>
 
   <script>
-    // URL Web App Google Apps Script của bạn:
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyLPhZ-A9cwBlXVWHAfKZCf0GfEIXFKeZOtZXPUDPXaX6_KtpPv5xGnIVrS2An_DWODMQ/exec';
 
     const resultCard = document.getElementById('resultCard');
     const placeholder = document.getElementById('placeholder');
-    const loading = document.getElementById('loading');
     const statusBadge = document.getElementById('statusBadge');
+    const syncText = document.getElementById('syncText');
 
-    let isProcessing = false;
+    let candidateDatabase = {}; // Bộ nhớ đệm lưu toàn bộ thí sinh
+    let isLocked = false;
 
-    // Gọi API Apps Script bằng JSONP để tránh chặn CORS hoàn toàn
-    function processCheckin(code) {
-      if (!code || isProcessing) return;
-      isProcessing = true;
-      loading.style.display = 'block';
-
+    // 1. Tải trước toàn bộ danh sách khi mở trang
+    function loadAllCandidates() {
+      syncText.innerText = 'Đang đồng bộ dữ liệu...';
       const script = document.createElement('script');
-      const callbackName = 'checkinCallback_' + Date.now();
+      const callbackName = 'initCache_' + Date.now();
 
       window[callbackName] = function(res) {
-        loading.style.display = 'none';
-        isProcessing = false;
-        renderResult(res);
+        if (res && res.result === 'success') {
+          candidateDatabase = res.data;
+          const count = Object.keys(candidateDatabase).length;
+          syncText.innerText = `✓ Đã sẵn sàng (${count} thí sinh)`;
+        }
         delete window[callbackName];
         document.body.removeChild(script);
       };
 
-      script.src = `${SCRIPT_URL}?action=checkin&code=${encodeURIComponent(code)}&callback=${callbackName}&_=${Date.now()}`;
+      script.src = `${SCRIPT_URL}?action=getAll&callback=${callbackName}&_=${Date.now()}`;
       document.body.appendChild(script);
     }
 
-    function renderResult(res) {
+    loadAllCandidates();
+
+    // 2. Tra cứu tức thì trong bộ nhớ Local (0.05 giây)
+    function processFastCheckin(rawCode) {
+      if (!rawCode || isLocked) return;
+      const code = rawCode.trim().toUpperCase();
+
+      isLocked = true;
       placeholder.style.display = 'none';
       resultCard.style.display = 'flex';
 
-      if (res.result === 'success') {
-        const c = res.candidate;
-        document.getElementById('candName').innerText = c.fullname;
-        document.getElementById('candCode').innerText = c.code;
-        document.getElementById('candGender').innerText = c.gender;
-        document.getElementById('candPhone').innerText = c.phone;
-        document.getElementById('candBracket').innerText = c.bracket;
-        document.getElementById('candCheckinTime').innerText = res.checkinTime;
+      const candidate = candidateDatabase[code];
 
-        // Ảnh thẻ (hoặc ảnh mặc định nếu không có)
-        document.getElementById('candPhoto').src = c.photoUrl || 'https://via.placeholder.com/170x220?text=Khong+Co+Anh';
+      if (candidate) {
+        document.getElementById('candName').innerText = candidate.fullname;
+        document.getElementById('candCode').innerText = candidate.code;
+        document.getElementById('candGender').innerText = candidate.gender;
+        document.getElementById('candPhone').innerText = candidate.phone;
+        document.getElementById('candBracket').innerText = candidate.bracket;
+        document.getElementById('candPhoto').src = candidate.photoUrl || 'https://via.placeholder.com/170x220?text=Khong+Co+Anh';
 
-        if (res.alreadyCheckedIn) {
+        if (candidate.checkedIn) {
           statusBadge.className = 'status-badge warn';
           statusBadge.innerText = 'ĐÃ CHECK-IN TRƯỚC ĐÓ';
+          document.getElementById('candCheckinTime').innerText = candidate.checkinTime;
         } else {
+          const nowStr = new Date().toLocaleTimeString('vi-VN') + ' ' + new Date().toLocaleDateString('vi-VN');
+          candidate.checkedIn = true;
+          candidate.checkinTime = nowStr;
+
           statusBadge.className = 'status-badge success';
           statusBadge.innerText = '✓ CHECK-IN THÀNH CÔNG';
+          document.getElementById('candCheckinTime').innerText = nowStr;
+
+          // Âm thầm gửi lệnh lưu vào Sheet ở background (không làm đơ web)
+          syncCheckinBackground(code);
         }
       } else {
         statusBadge.className = 'status-badge error';
         statusBadge.innerText = 'KHÔNG TÌM THẤY THÍ SINH';
         document.getElementById('candName').innerText = 'Chưa rõ';
-        document.getElementById('candCode').innerText = '---';
+        document.getElementById('candCode').innerText = code;
         document.getElementById('candGender').innerText = '---';
         document.getElementById('candPhone').innerText = '---';
         document.getElementById('candBracket').innerText = '---';
         document.getElementById('candCheckinTime').innerText = '---';
-        document.getElementById('candPhoto').src = 'https://via.placeholder.com/170x220?text=Loi';
+        document.getElementById('candPhoto').src = 'https://via.placeholder.com/170x220?text=Khong+Tim+Thay';
       }
 
-      // Cho phép quét người tiếp theo sau 3 giây
+      // 1.5 giây sau là quét được người tiếp theo
       setTimeout(() => {
-        isProcessing = false;
-      }, 3000);
+        isLocked = false;
+      }, 1500);
     }
 
-    // Nhập mã thủ công
+    // Gửi cập nhật ngầm về Google Sheet
+    function syncCheckinBackground(code) {
+      const script = document.createElement('script');
+      script.src = `${SCRIPT_URL}?action=syncCheckin&code=${encodeURIComponent(code)}&_=${Date.now()}`;
+      document.body.appendChild(script);
+      setTimeout(() => {
+        if (script.parentNode) document.body.removeChild(script);
+      }, 5000);
+    }
+
+    // Nhập mã tay
     document.getElementById('manualBtn').addEventListener('click', () => {
-      const code = document.getElementById('manualInput').value.trim();
-      if (code) processCheckin(code);
+      const val = document.getElementById('manualInput').value;
+      processFastCheckin(val);
     });
 
     document.getElementById('manualInput').addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        const code = e.target.value.trim();
-        if (code) processCheckin(code);
-      }
+      if (e.key === 'Enter') processFastCheckin(e.target.value);
     });
 
-    // Khởi động Camera quét QR
-    const html5QrcodeScanner = new Html5QrcodeScanner(
-      "reader", 
-      { 
-        fps: 10, 
-        qrbox: { width: 220, height: 220 },
-        aspectRatio: 1.0
-      },
-      false
-    );
-
-    html5QrcodeScanner.render((decodedText) => {
-      if (!isProcessing) {
-        processCheckin(decodedText);
+    // Bật camera mặc định
+    const html5QrCode = new Html5Qrcode("reader");
+    html5QrCode.start(
+      { facingMode: "environment" },
+      { fps: 15, qrbox: { width: 220, height: 220 } },
+      (decodedText) => {
+        processFastCheckin(decodedText);
       }
+    ).catch(() => {
+      html5QrCode.start(
+        { facingMode: "user" },
+        { fps: 15, qrbox: { width: 220, height: 220 } },
+        (decodedText) => processFastCheckin(decodedText)
+      );
     });
   </script>
 </body>
