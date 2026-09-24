@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Đăng ký Hội thi Tin học trẻ</title>
+  <!-- Thư viện tạo mã QR gọn nhẹ -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     * {
       box-sizing: border-box;
@@ -18,19 +20,19 @@
       margin: 0;
       padding: 20px;
     }
-    .form-container {
+    .container {
       background: #ffffff;
-      padding: 30px 40px;
-      border-radius: 12px;
-      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+      padding: 30px 35px;
+      border-radius: 14px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
       width: 100%;
-      max-width: 500px;
+      max-width: 520px;
     }
     h2 {
       text-align: center;
       color: #1a73e8;
       margin-top: 0;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
     p.subtitle {
       text-align: center;
@@ -39,7 +41,7 @@
       font-size: 14px;
     }
     .form-group {
-      margin-bottom: 18px;
+      margin-bottom: 16px;
     }
     label {
       display: block;
@@ -78,7 +80,7 @@
     .gender-label input {
       margin-right: 6px;
     }
-    button[type="submit"] {
+    button {
       width: 100%;
       background: #1a73e8;
       color: #fff;
@@ -91,7 +93,7 @@
       margin-top: 10px;
       transition: background 0.2s;
     }
-    button[type="submit"]:hover {
+    button:hover {
       background: #1557b0;
     }
     button:disabled {
@@ -104,75 +106,178 @@
       font-size: 14px;
       display: none;
     }
-    .success { color: #2e7d32; }
     .error { color: #d32f2f; }
+
+    /* Giao diện Phiếu Đăng Ký / Thẻ Check-in */
+    #ticketContainer {
+      display: none;
+      margin-top: 20px;
+    }
+    .ticket-card {
+      border: 2px dashed #1a73e8;
+      background: #f8fbff;
+      border-radius: 12px;
+      padding: 24px;
+      text-align: center;
+      position: relative;
+    }
+    .ticket-header {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1a73e8;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .reg-code-badge {
+      display: inline-block;
+      background: #e8f0fe;
+      color: #1a73e8;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-weight: 800;
+      font-size: 17px;
+      letter-spacing: 1px;
+      margin: 10px 0;
+      border: 1px solid #c2d7fa;
+    }
+    .ticket-info {
+      text-align: left;
+      font-size: 14px;
+      line-height: 1.8;
+      margin: 14px 0;
+      background: #fff;
+      padding: 12px 16px;
+      border-radius: 8px;
+      border: 1px solid #e0e0e0;
+    }
+    .ticket-info b {
+      color: #222;
+      display: inline-block;
+      width: 90px;
+    }
+    #qrcode {
+      display: flex;
+      justify-content: center;
+      margin: 15px 0 10px;
+    }
+    #qrcode img {
+      border: 4px solid #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .btn-download {
+      background: #2e7d32;
+      margin-top: 15px;
+    }
+    .btn-download:hover {
+      background: #1b5e20;
+    }
+    .btn-re-register {
+      background: #fff;
+      color: #666;
+      border: 1px solid #ccc;
+      margin-top: 8px;
+    }
+    .btn-re-register:hover {
+      background: #eee;
+    }
   </style>
 </head>
 <body>
 
-  <div class="form-container">
-    <h2>HỘI THI TIN HỌC TRẺ</h2>
-    <p class="subtitle">Phiếu đăng ký thông tin thí sinh</p>
+  <div class="container">
+    <!-- FORM ĐĂNG KÝ -->
+    <div id="formWrapper">
+      <h2>HỘI THI TIN HỌC TRẺ</h2>
+      <p class="subtitle">Phiếu đăng ký thông tin thí sinh</p>
 
-    <form id="registrationForm">
-      <div class="form-group">
-        <label for="fullname">Họ và tên thí sinh *</label>
-        <input type="text" id="fullname" name="fullname" placeholder="Nguyễn Văn A" required>
-      </div>
+      <form id="registrationForm">
+        <div class="form-group">
+          <label for="fullname">Họ và tên thí sinh *</label>
+          <input type="text" id="fullname" name="fullname" placeholder="Nguyễn Văn A" required>
+        </div>
 
-      <div class="form-group">
-        <label>Giới tính *</label>
-        <div class="gender-group">
-          <label class="gender-label">
-            <input type="radio" name="gender" value="Nam" checked> Nam
-          </label>
-          <label class="gender-label">
-            <input type="radio" name="gender" value="Nữ"> Nữ
-          </label>
+        <div class="form-group">
+          <label>Giới tính *</label>
+          <div class="gender-group">
+            <label class="gender-label">
+              <input type="radio" name="gender" value="Nam" checked> Nam
+            </label>
+            <label class="gender-label">
+              <input type="radio" name="gender" value="Nữ"> Nữ
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="phone">Số điện thoại *</label>
+          <input type="tel" id="phone" name="phone" placeholder="0901234567" pattern="(0[3|5|7|8|9])+([0-9]{8})\b" title="Số điện thoại di động Việt Nam 10 chữ số" required>
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email *</label>
+          <input type="email" id="email" name="email" placeholder="thi.sinh@gmail.com" required>
+        </div>
+
+        <div class="form-group">
+          <label for="competition_bracket">Bảng thi *</label>
+          <select id="competition_bracket" name="competition_bracket" required>
+            <option value="" disabled selected>-- Chọn bảng thi --</option>
+            <option value="Bảng A (Tiểu học)">Bảng A - Khối Tiểu học</option>
+            <option value="Bảng B (THCS)">Bảng B - Khối THCS</option>
+            <option value="Bảng C1 (THPT Chuyên)">Bảng C1 - Khối THPT Chuyên</option>
+            <option value="Bảng C2 (THPT Không chuyên)">Bảng C2 - Khối THPT Không chuyên</option>
+            <option value="Bảng D2 (Sản phẩm sáng tạo THCS)">Bảng D2 - Sản phẩm sáng tạo THCS</option>
+            <option value="Bảng D3 (Sản phẩm sáng tạo THPT)">Bảng D3 - Sản phẩm sáng tạo THPT</option>
+          </select>
+        </div>
+
+        <button type="submit" id="submitBtn">Gửi Đăng Ký</button>
+        <div id="statusMessage"></div>
+      </form>
+    </div>
+
+    <!-- KHU VỰC TRẢ VỀ PHIẾU CHECK-IN CÓ MÃ QR -->
+    <div id="ticketContainer">
+      <div class="ticket-card" id="ticketVisual">
+        <div class="ticket-header">THẺ CHECK-IN THÍ SINH</div>
+        <div>Hội thi Tin học trẻ</div>
+        
+        <div class="reg-code-badge" id="displayCode">THT-0001</div>
+        
+        <div id="qrcode"></div>
+        <p style="font-size: 12px; color: #777; margin: 4px 0 10px;">(Xuất trình mã QR này tại bàn điểm danh)</p>
+
+        <div class="ticket-info">
+          <div><b>Họ tên:</b> <span id="displayName"></span></div>
+          <div><b>Giới tính:</b> <span id="displayGender"></span></div>
+          <div><b>Điện thoại:</b> <span id="displayPhone"></span></div>
+          <div><b>Bảng thi:</b> <span id="displayBracket"></span></div>
         </div>
       </div>
 
-      <div class="form-group">
-        <label for="phone">Số điện thoại *</label>
-        <input type="tel" id="phone" name="phone" placeholder="0901234567" pattern="[0-9]{10,11}" required>
-      </div>
-
-      <div class="form-group">
-        <label for="email">Email *</label>
-        <input type="email" id="email" name="email" placeholder="thi.sinh@gmail.com" required>
-      </div>
-
-      <div class="form-group">
-        <label for="competition_bracket">Bảng thi *</label>
-        <select id="competition_bracket" name="competition_bracket" required>
-          <option value="" disabled selected>-- Chọn bảng thi --</option>
-          <option value="Bảng A (Tiểu học)">Bảng A - Khối Tiểu học</option>
-          <option value="Bảng B (THCS)">Bảng B - Khối THCS</option>
-          <option value="Bảng C1 (THPT Chuyên)">Bảng C1 - Khối THPT Chuyên</option>
-          <option value="Bảng C2 (THPT Không chuyên)">Bảng C2 - Khối THPT Không chuyên</option>
-          <option value="Bảng D2 (Sản phẩm sáng tạo THCS)">Bảng D2 - Sản phẩm sáng tạo THCS</option>
-          <option value="Bảng D3 (Sản phẩm sáng tạo THPT)">Bảng D3 - Sản phẩm sáng tạo THPT</option>
-        </select>
-      </div>
-
-      <button type="submit" id="submitBtn">Gửi Đăng Ký</button>
-      <div id="statusMessage"></div>
-    </form>
+      <button type="button" class="btn-download" id="downloadBtn">Tải ảnh thẻ Check-in (.PNG)</button>
+      <button type="button" class="btn-re-register" onclick="location.reload()">Đăng ký thí sinh khác</button>
+    </div>
   </div>
 
   <script>
-    // Dán URL Web App của Google Apps Script vào đây:
+    // URL Web App Google Apps Script của bạn
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwhsYvFsI7Sbn9ehi5mBi5JSmuvHGWkKzBuSomc-MHBAkFMpVBl3AYMbP8fKuI5vSEPXA/exec';
 
     const form = document.getElementById('registrationForm');
+    const formWrapper = document.getElementById('formWrapper');
+    const ticketContainer = document.getElementById('ticketContainer');
     const submitBtn = document.getElementById('submitBtn');
     const statusMessage = document.getElementById('statusMessage');
+
+    let currentRegisteredData = null;
 
     form.addEventListener('submit', function (e) {
       e.preventDefault();
 
       submitBtn.disabled = true;
-      submitBtn.innerText = 'Đang xử lý...';
+      submitBtn.innerText = 'Đang xử lý dữ liệu...';
       statusMessage.style.display = 'none';
 
       const formData = {
@@ -183,9 +288,9 @@
         competition_bracket: form.competition_bracket.value
       };
 
-      // Gửi dữ liệu tới Google Apps Script dưới dạng plain text để tránh bị CORS block
       fetch(SCRIPT_URL, {
         method: 'POST',
+        redirect: 'follow',
         headers: {
           'Content-Type': 'text/plain;charset=utf-8',
         },
@@ -194,23 +299,122 @@
       .then(response => response.json())
       .then(data => {
         if (data.result === 'success') {
-          statusMessage.className = 'success';
-          statusMessage.innerText = 'Chúc mừng bạn đã đăng ký thành công!';
-          form.reset();
+          // Lưu lại thông tin và mã đăng ký vừa nhận từ server
+          currentRegisteredData = {
+            ...formData,
+            code: data.registrationCode
+          };
+          renderTicket(currentRegisteredData);
         } else {
-          throw new Error(data.error || 'Lỗi không xác định');
+          throw new Error(data.error || 'Lỗi không xác định từ máy chủ');
         }
       })
       .catch(error => {
         console.error('Error:', error);
         statusMessage.className = 'error';
         statusMessage.innerText = 'Có lỗi xảy ra khi gửi đăng ký. Vui lòng thử lại sau!';
+        statusMessage.style.display = 'block';
       })
       .finally(() => {
-        statusMessage.style.display = 'block';
         submitBtn.disabled = false;
         submitBtn.innerText = 'Gửi Đăng Ký';
       });
+    });
+
+    // Hàm hiển thị phiếu check-in và tạo QR code
+    function renderTicket(info) {
+      formWrapper.style.display = 'none';
+      ticketContainer.style.display = 'block';
+
+      document.getElementById('displayCode').innerText = info.code;
+      document.getElementById('displayName').innerText = info.fullname;
+      document.getElementById('displayGender').innerText = info.gender;
+      document.getElementById('displayPhone').innerText = info.phone;
+      document.getElementById('displayBracket').innerText = info.competition_bracket;
+
+      // Xóa QR cũ nếu có và tạo QR mới chứa mã đăng ký (hoặc URL check-in)
+      const qrContainer = document.getElementById('qrcode');
+      qrContainer.innerHTML = '';
+      new QRCode(qrContainer, {
+        text: info.code,
+        width: 140,
+        height: 140,
+        colorDark : "#000000",
+        colorLight : "#ffffff",
+        correctLevel : QRCode.CorrectLevel.H
+      });
+    }
+
+    // Tự vẽ thẻ thành file ảnh PNG bằng Canvas để thí sinh tải về điện thoại
+    document.getElementById('downloadBtn').addEventListener('click', function() {
+      if (!currentRegisteredData) return;
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = 600;
+      canvas.height = 780;
+
+      // Vẽ hình nền và bo góc
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = "#1a73e8";
+      ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
+
+      // Header thẻ
+      ctx.fillStyle = "#1a73e8";
+      ctx.font = "bold 26px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("THẺ CHECK-IN THÍ SINH", canvas.width / 2, 60);
+
+      ctx.fillStyle = "#555555";
+      ctx.font = "18px sans-serif";
+      ctx.fillText("Hội thi Tin học trẻ", canvas.width / 2, 95);
+
+      // Mã đăng ký
+      ctx.fillStyle = "#e8f0fe";
+      ctx.fillRect(180, 120, 240, 48);
+      ctx.fillStyle = "#1a73e8";
+      ctx.font = "bold 24px sans-serif";
+      ctx.fillText(currentRegisteredData.code, canvas.width / 2, 152);
+
+      // Vẽ ảnh QR Code lên Canvas
+      const qrImg = document.querySelector('#qrcode img');
+      if (qrImg && qrImg.src) {
+        const qrImageObj = new Image();
+        qrImageObj.onload = function() {
+          ctx.drawImage(qrImageObj, (canvas.width - 200) / 2, 190, 200, 200);
+
+          // Khung thông tin cá nhân
+          ctx.fillStyle = "#f5f7fa";
+          ctx.fillRect(40, 420, canvas.width - 80, 280);
+          ctx.strokeStyle = "#dddddd";
+          ctx.lineWidth = 1;
+          ctx.strokeRect(40, 420, canvas.width - 80, 280);
+
+          ctx.textAlign = "left";
+          ctx.fillStyle = "#222222";
+          ctx.font = "18px sans-serif";
+          const startX = 65;
+          ctx.fillText("Họ và tên:    " + currentRegisteredData.fullname, startX, 470);
+          ctx.fillText("Giới tính:    " + currentRegisteredData.gender, startX, 520);
+          ctx.fillText("Điện thoại:   " + currentRegisteredData.phone, startX, 570);
+          ctx.fillText("Bảng thi:     " + currentRegisteredData.competition_bracket, startX, 620);
+          ctx.fillText("Email:        " + currentRegisteredData.email, startX, 670);
+
+          ctx.textAlign = "center";
+          ctx.fillStyle = "#888888";
+          ctx.font = "italic 15px sans-serif";
+          ctx.fillText("Vui lòng xuất trình thẻ này tại bàn tiếp đón của Hội thi.", canvas.width / 2, 735);
+
+          // Tạo link tải ảnh PNG
+          const link = document.createElement('a');
+          link.download = `TheCheckIn_${currentRegisteredData.code}.png`;
+          link.href = canvas.toDataURL('image/png');
+          link.click();
+        };
+        qrImageObj.src = qrImg.src;
+      }
     });
   </script>
 </body>
