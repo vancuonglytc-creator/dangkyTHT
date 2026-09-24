@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Đăng ký Hội thi Tin học trẻ</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    body {
+      background: #f0f2f5;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+    }
+    .form-container {
+      background: #ffffff;
+      padding: 30px 40px;
+      border-radius: 12px;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+      width: 100%;
+      max-width: 500px;
+    }
+    h2 {
+      text-align: center;
+      color: #1a73e8;
+      margin-top: 0;
+      margin-bottom: 8px;
+    }
+    p.subtitle {
+      text-align: center;
+      color: #666;
+      margin-bottom: 24px;
+      font-size: 14px;
+    }
+    .form-group {
+      margin-bottom: 18px;
+    }
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 600;
+      color: #333;
+      font-size: 14px;
+    }
+    input[type="text"],
+    input[type="tel"],
+    input[type="email"],
+    select {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus, select:focus {
+      border-color: #1a73e8;
+    }
+    .gender-group {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+      margin-top: 6px;
+    }
+    .gender-label {
+      display: flex;
+      align-items: center;
+      font-weight: normal;
+      cursor: pointer;
+    }
+    .gender-label input {
+      margin-right: 6px;
+    }
+    button[type="submit"] {
+      width: 100%;
+      background: #1a73e8;
+      color: #fff;
+      border: none;
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 10px;
+      transition: background 0.2s;
+    }
+    button[type="submit"]:hover {
+      background: #1557b0;
+    }
+    button:disabled {
+      background: #9aa0a6;
+      cursor: not-allowed;
+    }
+    #statusMessage {
+      margin-top: 15px;
+      text-align: center;
+      font-size: 14px;
+      display: none;
+    }
+    .success { color: #2e7d32; }
+    .error { color: #d32f2f; }
+  </style>
+</head>
+<body>
+
+  <div class="form-container">
+    <h2>HỘI THI TIN HỌC TRẺ</h2>
+    <p class="subtitle">Phiếu đăng ký thông tin thí sinh</p>
+
+    <form id="registrationForm">
+      <div class="form-group">
+        <label for="fullname">Họ và tên thí sinh *</label>
+        <input type="text" id="fullname" name="fullname" placeholder="Nguyễn Văn A" required>
+      </div>
+
+      <div class="form-group">
+        <label>Giới tính *</label>
+        <div class="gender-group">
+          <label class="gender-label">
+            <input type="radio" name="gender" value="Nam" checked> Nam
+          </label>
+          <label class="gender-label">
+            <input type="radio" name="gender" value="Nữ"> Nữ
+          </label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="phone">Số điện thoại *</label>
+        <input type="tel" id="phone" name="phone" placeholder="0901234567" pattern="[0-9]{10,11}" required>
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email *</label>
+        <input type="email" id="email" name="email" placeholder="thi.sinh@gmail.com" required>
+      </div>
+
+      <div class="form-group">
+        <label for="competition_bracket">Bảng thi *</label>
+        <select id="competition_bracket" name="competition_bracket" required>
+          <option value="" disabled selected>-- Chọn bảng thi --</option>
+          <option value="Bảng A (Tiểu học)">Bảng A - Khối Tiểu học</option>
+          <option value="Bảng B (THCS)">Bảng B - Khối THCS</option>
+          <option value="Bảng C1 (THPT Chuyên)">Bảng C1 - Khối THPT Chuyên</option>
+          <option value="Bảng C2 (THPT Không chuyên)">Bảng C2 - Khối THPT Không chuyên</option>
+          <option value="Bảng D2 (Sản phẩm sáng tạo THCS)">Bảng D2 - Sản phẩm sáng tạo THCS</option>
+          <option value="Bảng D3 (Sản phẩm sáng tạo THPT)">Bảng D3 - Sản phẩm sáng tạo THPT</option>
+        </select>
+      </div>
+
+      <button type="submit" id="submitBtn">Gửi Đăng Ký</button>
+      <div id="statusMessage"></div>
+    </form>
+  </div>
+
+  <script>
+    // Dán URL Web App của Google Apps Script vào đây:
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwhsYvFsI7Sbn9ehi5mBi5JSmuvHGWkKzBuSomc-MHBAkFMpVBl3AYMbP8fKuI5vSEPXA/exec';
+
+    const form = document.getElementById('registrationForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const statusMessage = document.getElementById('statusMessage');
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+
+      submitBtn.disabled = true;
+      submitBtn.innerText = 'Đang xử lý...';
+      statusMessage.style.display = 'none';
+
+      const formData = {
+        fullname: form.fullname.value.trim(),
+        gender: form.gender.value,
+        phone: form.phone.value.trim(),
+        email: form.email.value.trim(),
+        competition_bracket: form.competition_bracket.value
+      };
+
+      // Gửi dữ liệu tới Google Apps Script dưới dạng plain text để tránh bị CORS block
+      fetch(SCRIPT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8',
+        },
+        body: JSON.stringify(formData)
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.result === 'success') {
+          statusMessage.className = 'success';
+          statusMessage.innerText = 'Chúc mừng bạn đã đăng ký thành công!';
+          form.reset();
+        } else {
+          throw new Error(data.error || 'Lỗi không xác định');
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        statusMessage.className = 'error';
+        statusMessage.innerText = 'Có lỗi xảy ra khi gửi đăng ký. Vui lòng thử lại sau!';
+      })
+      .finally(() => {
+        statusMessage.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.innerText = 'Gửi Đăng Ký';
+      });
+    });
+  </script>
+</body>
+</html>
